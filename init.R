@@ -12,6 +12,7 @@ options(repos=r)
 install.packages(
   c(
     'dash',
+    'dashHtmlComponents',
     'readr',
     'here',
     'ggthemes',
