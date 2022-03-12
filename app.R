@@ -9,15 +9,43 @@ colony <-  readr::read_csv("data/colony.csv")
 colony
 
 # Wrangle data
-colony <- colony |>
-  dplyr::mutate(start_month = stringr::str_split(colony$months, "-")) |>
-  tidyr::unnest(cols = c(start_month)) |>
+colony <- colony %>%
+  dplyr::mutate(start_month = stringr::str_split(colony$months, "-")) %>%
+  tidyr::unnest(cols = c(start_month)) %>%
   dplyr::mutate(
     time = lubridate::ym(paste(year, start_month)),
     period = lubridate::quarter(time, type = "year.quarter")
-  ) |> 
-  dplyr::select(state, colony_n, time, period) |>
+  ) %>% 
+  dplyr::select(state, colony_n, time, period) %>%
   dplyr::distinct(state, period, .keep_all = TRUE)
+
+# Create app and widgets
+
+app <- Dash$new(external_stylesheets = dbcThemes$BOOTSTRAP)
+
+app$layout(
+  dbcContainer(
+    list(
+      dccGraph(id = "ncolony_chart"),
+      dccDropdown(
+        id = "state-widget",
+        options = unique(colony$state),
+        value = "Alabama"
+      ),
+      dccDropdown(
+        id = "start-date-widget",
+        options = unique(colony$period),
+        value = 2015.1
+      ),
+      dccDropdown(
+        id = "end-date-widget",
+        options = unique(colony$period),
+        value = 2015.4
+      )
+    )
+  )
+)
+
 
 # Plot time series
 
@@ -33,13 +61,13 @@ app$callback(
     start_date <- lubridate::ym(start_date)
     end_date <- lubridate::ym(end_date)
     
-    data <- colony |>
+    data <- colony %>%
       dplyr::filter(
         state == state_arg,
         lubridate::ym(period) %within% lubridate::interval(start = start_date, end = end_date)
       )
     
-    time_series <- data |> ggplot2::ggplot() +
+    time_series <- data %>% ggplot2::ggplot() +
       ggplot2::aes(x = time, y = colony_n) +
       ggplot2::geom_line(size = 2) +
       ggplot2::geom_point(size = 4) +
@@ -59,14 +87,10 @@ app$callback(
     
     time_series
     
-    ggplotly(time_series + aes(text = colony_n), tooltip = "text", width = 700, height = 400) |>
+    ggplotly(time_series + aes(text = colony_n), tooltip = "text", width = 700, height = 400) %>%
       layout(plot_bgcolor = '#fffadc')
   
   }
 )
-
-app = Dash$new()
-
-app$layout(dccGraph(figure =  plot_timeseries("Alabama", 2015.1, 2016.4)))
 
 app$run_server(debug = T)
